@@ -3,7 +3,12 @@
 > 让你的手机在任何网络下（4G/5G、公司网、咖啡店）打开 **电脑上正在运行的那个 DeepSeek Harness**：
 > 同一个进程、同一份会话、同一批任务，不是另起一套实例。
 >
-> **不需要局域网**，不需要端口转发，不需要改 DSH 源码。
+> 不需要局域网，不需要端口转发，不需要改 DSH 源码。
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A518.17-brightgreen)](gateway/package.json)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#%E6%89%8B%E5%8A%A8%E6%96%B9%E5%BC%8F%E4%BB%BB%E6%84%8F%E7%B3%BB%E7%BB%9F)
+
 
 [English](README.en.md) | 中文
 
@@ -48,7 +53,7 @@ flowchart LR
 前置：电脑上已安装 **DeepSeek Harness 桌面版**（并保持运行）、Node.js ≥ 18、PowerShell 5.1+。
 
 ```powershell
-git clone https://github.com/<you>/dsh-remote.git
+git clone https://github.com/h958661134/dsh-remote.git
 cd dsh-remote
 # 管理员 PowerShell（仅 Tailscale 安装需要管理员；纯隧道模式可不用）
 powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
