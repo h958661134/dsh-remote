@@ -49,6 +49,28 @@ flowchart LR
 - **可诊断**：手机端 JS 异常、资源加载失败、卡住的请求会回报到网关日志；附带无头浏览器探针 `probe-browser.mjs`。
 - **自动跟随**：Harness 重启后端口/令牌变化，网关自动重新获取，无需人工干预。
 
+## 一键 Prompt：让 AI Agent 帮你部署
+
+把下面这段直接粘给你的 AI Agent（Harness 自己、Claude Code、Codex CLI、Cursor 都行），它会自动装插件、起网关、打通一条非局域网通道、生成手机二维码并跑完 12 项自检：
+
+```text
+请帮我在本机部署 https://github.com/h958661134/dsh-remote ：
+clone 仓库后严格按 docs/agent-prompt.md 执行——
+1) 安装 remote-gw 插件到 DSH desktop profile（先备份 cordis.patch.yml，等 remote-gw-state.json 出现）；
+2) node gateway/admin.mjs init 生成口令；
+3) 启动 gateway/server.mjs 并确认 /__health 的 ok:true；
+4) 问我选 Tailscale（私有）还是 Cloudflare 隧道（公网），按 scripts/ 里对应脚本发布；
+5) 生成手机访问页与二维码；
+6) node gateway/selftest.mjs <口令> <地址> 必须 12/12；
+7) 汇报手机地址、口令、通道类型、开机自启状态和回滚命令。
+
+约束：不改 Harness 源码、不重启桌面 App（除非插件未热加载）、listenHost 保持 127.0.0.1、
+不要把 launch token / dsh-auth Cookie / 口令贴到公开日志。失败时保留现场并报告
+命令、错误输出和 gateway/gateway.log 最后 30 行。
+```
+
+完整版（含英文、逐步验收标准、常见偏差自查）见 [docs/agent-prompt.md](docs/agent-prompt.md)。
+
 ## 快速开始（Windows）
 
 前置：电脑上已安装 **DeepSeek Harness 桌面版**（并保持运行）、Node.js ≥ 18、PowerShell 5.1+。

@@ -47,12 +47,37 @@ flowchart LR
   ships a headless-Chromium probe (`probe-browser.mjs`).
 - **Self-healing** — when the Harness restarts (new port + token), the gateway picks it up automatically.
 
+## One-prompt setup (let your AI agent install it)
+
+Paste this into your AI agent (DeepSeek Harness itself, Claude Code, Codex CLI, Cursor — anything with shell access). It installs the plugin, starts the gateway, publishes it over a non-LAN transport, renders the phone QR page and runs the 12-check selftest:
+
+```text
+Deploy https://github.com/h958661134/dsh-remote on this machine.
+Clone the repo, then follow docs/agent-prompt.md exactly:
+1) install the remote-gw plugin into the DSH desktop profile (back up cordis.patch.yml,
+   wait for remote-gw-state.json);
+2) run `node gateway/admin.mjs init` to create the password;
+3) start gateway/server.mjs and confirm /__health returns ok:true;
+4) ask me to choose Tailscale (private) or a Cloudflare tunnel (public), then run the matching
+   script from scripts/;
+5) render the phone access page and QR code;
+6) `node gateway/selftest.mjs <password> <url>` must pass 12/12;
+7) report the phone URL, password, transport, autostart status and the rollback command.
+
+Constraints: do not modify the harness source, do not restart the desktop app (unless the plugin
+did not hot-mount), keep listenHost at 127.0.0.1, never print the launch token, the dsh-auth
+cookie or the password into public logs. On failure keep the state, report the commands, the
+error and the last 30 lines of gateway/gateway.log.
+```
+
+Full version (English + Chinese, acceptance checks, pitfalls) — [docs/agent-prompt.md](docs/agent-prompt.md).
+
 ## Quick start (Windows)
 
 Requirements: DeepSeek Harness desktop installed and running, Node.js ≥ 18, PowerShell 5.1+.
 
 ```powershell
-git clone https://github.com/<you>/dsh-remote.git
+git clone https://github.com/h958661134/dsh-remote.git
 cd dsh-remote
 powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
 ```
