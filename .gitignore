@@ -11,6 +11,9 @@ remote-gw-state.json
 phone-access.html
 phone-qr.png
 
+# downloaded binaries (cloudflared, portable gh, ...)
+bin/
+
 # tooling
 __pycache__/
 *.pyc
