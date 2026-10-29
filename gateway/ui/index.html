@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dsh-remote · 控制台</title>
+  <link rel="icon" href="data:,">`n  <link rel="stylesheet" href="/__ui/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark">DSH</span>
+        <div class="brand-text">
+          <h1>dsh-remote</h1>
+          <p>手机远程使用 DeepSeek Harness · 无需局域网</p>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span class="pill" id="harness-pill"><i></i><b id="harness-text">检查中</b></span>
+        <span class="muted" id="version"></span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card phone-card">
+        <div class="card-head">
+          <h2>手机入口</h2>
+          <span class="tag" id="transport-tag">未连接</span>
+        </div>
+
+        <div class="qr-box">
+          <canvas id="qr" width="240" height="240"></canvas>
+          <p class="qr-hint" id="qr-hint">选择下方通道后生成二维码</p>
+        </div>
+
+        <label class="field-label">访问地址</label>
+        <div class="field-row">
+          <code id="url" class="value">—</code>
+          <button class="ghost icon" data-copy="url" title="复制地址">复制</button>
+        </div>
+
+        <label class="field-label">访问口令</label>
+        <div class="field-row">
+          <code id="password" class="value masked">••••••••</code>
+          <button class="ghost icon" id="password-eye" title="显示/隐藏">显示</button>
+          <button class="ghost icon" data-copy="password" title="复制口令">复制</button>
+          <button class="ghost icon" id="password-change" title="修改口令">修改</button>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="open-link">在浏览器打开</button>
+          <button class="ghost" id="refresh-link">刷新二维码</button>
+        </div>
+      </section>
+
+      <div class="column">
+        <section class="card">
+          <div class="card-head">
+            <h2>通道</h2>
+            <span class="muted small">二选一即可</span>
+          </div>
+
+          <div class="transport" id="ts-row">
+            <div class="transport-main">
+              <div class="transport-title"><span class="dot" id="ts-dot"></span><b>Tailscale</b><span class="tag tiny">私有</span></div>
+              <p class="muted small" id="ts-desc">只有你账号下的设备能连，不暴露公网</p>
+            </div>
+            <button class="ghost" id="ts-btn">发布</button>
+          </div>
+
+          <div class="transport" id="cf-row">
+            <div class="transport-main">
+              <div class="transport-title"><span class="dot" id="cf-dot"></span><b>Cloudflare 隧道</b><span class="tag tiny">公网</span></div>
+              <p class="muted small" id="cf-desc">HTTPS 公网地址，无需账号；地址重启会变</p>
+            </div>
+            <button class="ghost" id="cf-btn">启动</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>运行状态</h2></div>
+          <dl class="kv">
+            <div><dt>网关监听</dt><dd id="kv-listen">—</dd></div>
+            <div><dt>Harness</dt><dd id="kv-harness">—</dd></div>
+            <div><dt>开机自启</dt><dd><label class="switch"><input type="checkbox" id="autostart"><span></span></label><span class="muted small" id="autostart-note"></span></dd></div>
+          </dl>
+        </section>
+
+        <section class="card logs">
+          <div class="card-head">
+            <h2>日志</h2>
+            <button class="ghost tiny-btn" id="logs-refresh">刷新</button>
+          </div>
+          <pre id="logs">—</pre>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span>网关只监听 127.0.0.1 · 手机通过 Tailscale 或隧道接入</span>
+      <span class="muted">dsh-remote · MIT</span>
+    </footer>
+  </div>
+
+  <dialog id="password-dialog">
+    <form method="dialog" id="password-form">
+      <h3>修改访问口令</h3>
+      <p class="muted small">修改后，手机端已登录的会话不会立即失效；需要全部失效请重启网关。</p>
+      <input type="password" id="new-password" placeholder="新口令（至少 8 位）" autocomplete="new-password" minlength="8" required>
+      <input type="password" id="new-password2" placeholder="再输一次" autocomplete="new-password" minlength="8" required>
+      <p class="error" id="password-error"></p>
+      <div class="dialog-actions">
+        <button type="button" class="ghost" id="password-cancel">取消</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/__ui/vendor/qrcode.js"></script>
+  <script src="/__ui/app.js"></script>
+</body>
+</html>

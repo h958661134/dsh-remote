@@ -49,6 +49,25 @@ flowchart LR
 - **可诊断**：手机端 JS 异常、资源加载失败、卡住的请求会回报到网关日志；附带无头浏览器探针 `probe-browser.mjs`。
 - **自动跟随**：Harness 重启后端口/令牌变化，网关自动重新获取，无需人工干预。
 
+## 桌面客户端与控制台
+
+![控制面板](docs/images/control-panel.png)
+
+网关自带一个本地控制面板 `http://127.0.0.1:8787/__ui/`，三种打开方式：
+
+- **一键脚本（推荐，零安装）**：`scripts\open-app.cmd` —— 用 Edge/Chrome 的「应用模式」打开，无地址栏、像原生窗口；
+- **Electron 桌面客户端**：`cd desktop && npm install && npm start` —— 真正的桌面 App，会自动拉起网关并打开面板；
+- **普通浏览器**：直接访问 `http://127.0.0.1:8787/__ui/`。
+
+面板里能做的事：
+
+- **状态一眼看清**：Harness 是否在线、网关监听地址、开机自启开关；
+- **手机入口**：二维码、访问地址、访问口令（显示 / 复制 / 修改）；
+- **通道管理**：一键发布/撤销 Tailscale，或启动/停止 Cloudflare 隧道拿到新地址；
+- **日志**：网关最近 200 行日志，排错不用开终端。
+
+> 控制面板只接受来自本机（loopback Host）的请求；经隧道进来的外部请求一律 403 —— 它不能也不该从公网访问。
+
 ## 一键 Prompt：让 AI Agent 帮你部署
 
 把下面这段直接粘给你的 AI Agent（Harness 自己、Claude Code、Codex CLI、Cursor 都行），它会自动装插件、起网关、打通一条非局域网通道、生成手机二维码并跑完 12 项自检：
@@ -181,7 +200,8 @@ node selftest.mjs 口令 <baseUrl>      # 12 项端到端自检
 ## 目录结构
 
 ```
-gateway/        零依赖网关（server.mjs）、配置工具、自检、无头探针
+gateway/        零依赖网关（server.mjs）、控制面板 UI（ui/）、配置工具、自检、无头探针
+desktop/        Electron 桌面客户端（可选，一个窗口 + 自动拉起网关）
 plugin/         Harness 桌面 profile 插件（导出端口 + 启动令牌）
 scripts/        Windows 一键安装/卸载/体检、Tailscale 发布、隧道刷新、二维码/访问页生成
 docs/           架构、部署、排错、安全

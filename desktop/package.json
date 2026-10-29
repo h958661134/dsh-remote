@@ -1,0 +1,14 @@
+{
+  "name": "dsh-remote-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop client for dsh-remote — a window around the local control panel",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}

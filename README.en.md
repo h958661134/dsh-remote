@@ -47,6 +47,26 @@ flowchart LR
   ships a headless-Chromium probe (`probe-browser.mjs`).
 - **Self-healing** — when the Harness restarts (new port + token), the gateway picks it up automatically.
 
+## Desktop client and control panel
+
+![Control panel](docs/images/control-panel.png)
+
+The gateway ships a local control panel at `http://127.0.0.1:8787/__ui/`. Three ways to open it:
+
+- **One-click script (no install)**: `scripts\open-app.cmd` — opens it in Edge/Chrome **app mode**, a chromeless native-looking window;
+- **Electron desktop client**: `cd desktop && npm install && npm start` — a real desktop app that also starts the gateway for you;
+- **Any browser**: <http://127.0.0.1:8787/__ui/>.
+
+What the panel does:
+
+- status at a glance: harness online, gateway listener, autostart switch;
+- phone entry: QR code, public URL, access password (reveal / copy / change);
+- transports: publish/revoke Tailscale, start/stop the Cloudflare tunnel and get the new URL;
+- logs: the last 200 gateway log lines, so you rarely need a terminal.
+
+> The panel only accepts requests with a loopback Host header; tunneled traffic gets 403 — it
+> cannot and should not be reachable from the internet.
+
 ## One-prompt setup (let your AI agent install it)
 
 Paste this into your AI agent (DeepSeek Harness itself, Claude Code, Codex CLI, Cursor — anything with shell access). It installs the plugin, starts the gateway, publishes it over a non-LAN transport, renders the phone QR page and runs the 12-check selftest:
@@ -161,7 +181,8 @@ strong password and preferably an outer identity layer (Cloudflare Access, Tails
 ## Layout
 
 ```
-gateway/   zero-dependency gateway, config tool, self-test, headless probe
+gateway/   zero-dependency gateway, control-panel UI (ui/), config tool, self-test, headless probe
+desktop/   optional Electron shell (one window + gateway autostart)
 plugin/    Harness desktop-profile plugin (exports port + launch token)
 scripts/   Windows install/uninstall/doctor, Tailscale publish, tunnel refresh, QR/page generators
 docs/      architecture, deployment, troubleshooting, security

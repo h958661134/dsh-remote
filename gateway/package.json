@@ -26,6 +26,8 @@
   "license": "MIT",
   "files": [
     "server.mjs",
+    "control.mjs",
+    "ui/",
     "admin.mjs",
     "selftest.mjs",
     "probe-browser.mjs",

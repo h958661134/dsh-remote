@@ -19,7 +19,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: syntax check
         run: |
-          for file in gateway/*.mjs plugin/*.js; do
+          for file in gateway/*.mjs gateway/ui/*.js plugin/*.js desktop/*.js; do
             node --check "$file"
           done
       - name: cli smoke test

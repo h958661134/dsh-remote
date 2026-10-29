@@ -29,6 +29,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import crypto from 'node:crypto'
 import os from 'node:os'
+import { createControl } from './control.mjs'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -884,6 +885,8 @@ function readBody (req, limit = 64 * 1024) {
   })
 }
 
+const control = createControl({ cfg, configPath: CONFIG_PATH, log, readState, version: VERSION })
+
 const server = http.createServer(async (req, res) => {
   const startedAt = Date.now()
   res.on('finish', () => {
@@ -894,6 +897,7 @@ const server = http.createServer(async (req, res) => {
   })
   try {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'gateway'}`)
+    if (control.handle(req, res, url)) return
 
     if (url.pathname === LOGIN_PATH) {
       if (req.method === 'GET') {

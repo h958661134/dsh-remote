@@ -108,3 +108,18 @@ Harness 的 Cookie audience 是 `127.0.0.1:<port>`，且 `Host` 检查只接受 
 
 `dsh --profile web --host <ip> --trusted-host <host> --public-url <url>` 是 DSH 官方的对公网部署方式，
 由 DSH 自己发令牌、自己设定信任主机。本项目面向**已经在用桌面版**的用户：不改启动参数、不重启、复用同一实例。
+
+## 9. 控制面板（desktop client）
+
+`gateway/ui/` 是一套无框架的静态页面，由 `gateway/control.mjs` 挂在 `/__ui/` 与 `/__api/` 下。
+
+- **访问边界**：只接受 `Host` 为 `127.0.0.1:<port>` / `localhost:<port>` 的请求，其余一律 403。
+  因此它无法经隧道从公网访问，也不需要额外的登录 —— 它本来只能被本机进程打开。
+- **能做的事**：读取状态（harness 端口、隧道、Tailscale、自启）、改口令（写回 config.json +
+  access.txt）、启动/停止 cloudflared、发布/撤销 Tailscale Serve、读日志尾部、开关开机自启。
+- **不做的事**：不提供代理通道、不暴露 launch token 或 `dsh-auth-*` Cookie、不改 Harness。
+- **Electron 外壳**（`desktop/`）只是一层窗口：确保网关在跑（`/__health` 探测，必要时
+  `spawn node gateway/server.mjs`），然后 `loadURL('http://127.0.0.1:8787/__ui/')`。
+  打包可选，仓库不提交二进制。
+
+控制面板与网关同进程，因此隧道/密码状态都是实时的；面板刷新通过 3 秒轮询 `/__api/status`。

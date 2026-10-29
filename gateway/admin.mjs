@@ -4,18 +4,24 @@
  *
  *   node admin.mjs init                    create config.json (random secret + random password)
  *   node admin.mjs set-password <pw>       set / rotate the access password
- *   node admin.mjs set-password           generate a random password and print it
+ *   node admin.mjs set-password            generate a random password and print it
  *   node admin.mjs show                    print the effective config (password hidden)
+ *
+ * The plaintext password is also written to access.txt (owner-only) so the
+ * local control panel can display it. Keep that file private.
  */
 
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const CONFIG_PATH = path.join(HERE, 'config.json')
-const STATE_PATH = path.join(process.env.USERPROFILE || process.env.HOME || '.', '.dsh', 'profiles', 'desktop', 'remote-gw-state.json')
+const CONFIG_PATH = process.env.DSHGW_CONFIG || path.join(HERE, 'config.json')
+const ACCESS_PATH = path.join(HERE, 'access.txt')
+const DSH_HOME = process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
+const STATE_PATH = path.join(DSH_HOME, 'profiles', 'desktop', 'remote-gw-state.json')
 
 function read () {
   if (!fs.existsSync(CONFIG_PATH)) throw new Error('config.json missing — run: node admin.mjs init')
@@ -24,6 +30,14 @@ function read () {
 
 function write (cfg) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2) + '\n')
+}
+
+function writeAccess (password) {
+  try {
+    fs.writeFileSync(ACCESS_PATH, `password: ${password}\ngenerated: ${new Date().toISOString()}\n`, { mode: 0o600 })
+  } catch {
+    /* access.txt is a convenience for the control panel, not a requirement */
+  }
 }
 
 function hashPassword (password) {
@@ -56,9 +70,11 @@ switch (command) {
       sessionSecret: crypto.randomBytes(32).toString('base64url'),
       sessionMaxAgeDays: 30,
       auth: { mode: 'password', password: hashPassword(password) },
+      clientSupport: true,
       publicUrl: '',
     }
     write(cfg)
+    writeAccess(password)
     console.log('config written:', CONFIG_PATH)
     console.log('access password:', password)
     break
@@ -68,6 +84,7 @@ switch (command) {
     const password = rest[0] || randomPassword()
     cfg.auth = { mode: 'password', password: hashPassword(password) }
     write(cfg)
+    writeAccess(password)
     console.log('password updated')
     console.log('access password:', password)
     break

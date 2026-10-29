@@ -118,6 +118,7 @@ Write-Host ''
 Write-Host '========================================' -ForegroundColor Green
 Write-Host ' dsh-remote 安装完成' -ForegroundColor Green
 Write-Host " 网关：    http://127.0.0.1:8787"
+Write-Host " 控制台：  http://127.0.0.1:8787/__ui/   （双击 scripts\open-app.cmd 可开成桌面窗口）"
 if ($password) { Write-Host " 访问口令：$password" }
 Write-Host '========================================' -ForegroundColor Green
 Write-Host ''
