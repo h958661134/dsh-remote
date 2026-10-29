@@ -1,4 +1,11 @@
-﻿# dsh-remote — publish the gateway to your tailnet with Tailscale Serve
+﻿# dsh-remote — publish the gateway to your tailnet with Tailscale Serve (NOT RECOMMENDED)
+#
+# WARNING: Tailscale only performs well when both peers can establish a direct
+# connection. When NAT traversal fails, traffic is relayed via DERP (typically
+# 300-500 ms with low throughput) and the ~1.7 MB harness frontend may never
+# finish loading — the phone shows a blank screen or stays on "Loading plugins".
+# Check with:  tailscale ping <phone-ip>   → "via DERP(...)" means unusable.
+# Prefer the Cloudflare tunnel / ngrok / your own VPS (docs/deployment.md).
 #
 #   powershell -ExecutionPolicy Bypass -File .\scripts\enable-tailscale.ps1
 #

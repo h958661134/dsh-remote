@@ -123,7 +123,7 @@ if ($password) { Write-Host " 访问口令：$password" }
 Write-Host '========================================' -ForegroundColor Green
 Write-Host ''
 Write-Host '下一步：选一条“不在局域网也能连”的通道' -ForegroundColor Cyan
-Write-Host '  Tailscale（私有）:   powershell -File .\scripts\enable-tailscale.ps1'
-Write-Host '  Cloudflare（公网）:  powershell -File .\scripts\refresh-tunnel.ps1'
+Write-Host '  Cloudflare（公网，推荐）: powershell -File .\scripts\refresh-tunnel.ps1'
+Write-Host '  Tailscale（不推荐，可能走 DERP 中继不可用）: powershell -File .\scripts\enable-tailscale.ps1'
 Write-Host '  体检/修复:           powershell -File .\scripts\doctor.ps1 [-Fix]'
 Write-Host ''

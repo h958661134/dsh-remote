@@ -6,18 +6,22 @@
  * it: the panel can change the password, start/stop transports and read logs.
  *
  *   GET  /__ui, /__ui/*          static UI (gateway/ui/)
- *   GET  /__api/status           gateway + harness + transport state
+ *   GET  /__api/status           gateway + harness + tunnel state
  *   POST /__api/password         { password }
  *   POST /__api/tunnel           { action: 'start' | 'stop' }
- *   POST /__api/tailscale        { action: 'serve' | 'reset' }
  *   POST /__api/autostart        { enabled: boolean }
  *   GET  /__api/logs?lines=200   tail of gateway.log
+ *
+ * Transports: only the Cloudflare quick tunnel is offered here. Tailscale is
+ * documented but not surfaced in the panel: on networks where both peers cannot
+ * make a direct connection the traffic is relayed through DERP (often 300-500ms
+ * with low throughput) and the ~1.7MB harness frontend never finishes loading.
  */
 
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import { execFile, spawn } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -28,9 +32,6 @@ const LOG_FILE = path.join(HERE, 'gateway.log')
 const ACCESS_FILE = path.join(HERE, 'access.txt')
 
 const MAX_BODY = 16 * 1024
-const TAILSCALE_EXE = process.platform === 'win32'
-  ? path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Tailscale', 'tailscale.exe')
-  : 'tailscale'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -39,11 +40,6 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.json': 'application/json; charset=utf-8',
-}
-
-function platformTailscale() {
-  if (process.platform !== 'win32') return 'tailscale'
-  return fs.existsSync(TAILSCALE_EXE) ? TAILSCALE_EXE : null
 }
 
 function findCloudflared() {
@@ -61,7 +57,6 @@ function findPython() {
 
 export function createControl({ cfg, configPath, log, readState, version }) {
   const tunnel = { child: null, url: null, starting: false, lastError: null }
-  let tailscaleCache = { at: 0, value: null }
 
   // ── helpers ────────────────────────────────────────────────────────────
 
@@ -99,34 +94,6 @@ export function createControl({ cfg, configPath, log, readState, version }) {
     } catch {}
   }
 
-  function tailscaleState(force = false) {
-    const now = Date.now()
-    if (!force && tailscaleCache.value && now - tailscaleCache.at < 5000) return tailscaleCache.value
-    const exe = platformTailscale()
-    if (!exe) {
-      tailscaleCache = { at: now, value: { installed: false, connected: false, dnsName: null, serving: false } }
-      return tailscaleCache.value
-    }
-    return new Promise((resolve) => {
-      execFile(exe, ['status', '--json'], { timeout: 5000 }, (error, stdout) => {
-        let connected = false
-        let dnsName = null
-        let serving = false
-        try {
-          const parsed = JSON.parse(String(stdout || '{}'))
-          connected = parsed.BackendState === 'Running'
-          dnsName = parsed.Self && parsed.Self.DNSName ? String(parsed.Self.DNSName).replace(/\.$/, '') : null
-        } catch {}
-        execFile(exe, ['serve', 'status'], { timeout: 5000 }, (serveError, serveOut) => {
-          serving = String(serveOut || '').includes(`127.0.0.1:${cfg.listenPort}`)
-          const value = { installed: true, connected, dnsName, serving }
-          tailscaleCache = { at: now, value }
-          resolve(value)
-        })
-      })
-    })
-  }
-
   function tunnelState() {
     let url = tunnel.url
     if (!url) {
@@ -135,7 +102,15 @@ export function createControl({ cfg, configPath, log, readState, version }) {
         if (saved.startsWith('http')) url = saved
       } catch {}
     }
-    return { running: Boolean(tunnel.child && !tunnel.child.killed), url, starting: tunnel.starting, lastError: tunnel.lastError }
+    const running = Boolean(tunnel.child && !tunnel.child.killed)
+    return {
+      running,
+      // a saved URL with no managed process: started by scripts/refresh-tunnel.ps1
+      external: Boolean(!running && url),
+      url,
+      starting: tunnel.starting,
+      lastError: tunnel.lastError,
+    }
   }
 
   function autostartState() {
@@ -260,17 +235,6 @@ export function createControl({ cfg, configPath, log, readState, version }) {
     })
   }
 
-  function runTailscale(args) {
-    const exe = platformTailscale()
-    if (!exe) return Promise.resolve({ ok: false, error: '未找到 Tailscale（https://tailscale.com/download）' })
-    return new Promise((resolve) => {
-      execFile(exe, args, { timeout: 20000 }, (error, stdout, stderr) => {
-        if (error) resolve({ ok: false, error: (stderr || error.message || '').trim() })
-        else resolve({ ok: true, output: String(stdout || '').trim() })
-      })
-    })
-  }
-
   // ── HTTP entry ─────────────────────────────────────────────────────────
 
   return {
@@ -333,7 +297,7 @@ export function createControl({ cfg, configPath, log, readState, version }) {
 
     if (route === '/__api/status' && req.method === 'GET') {
       const state = readState()
-      const [tailscale, autostart] = await Promise.all([tailscaleState(true), Promise.resolve(autostartState())])
+      const autostart = autostartState()
       json(res, 200, {
         version,
         listen: `http://${cfg.listenHost}:${cfg.listenPort}`,
@@ -343,7 +307,6 @@ export function createControl({ cfg, configPath, log, readState, version }) {
           : { ok: false, port: null, exportedAt: null },
         password: { set: Boolean(cfg.auth?.password) && cfg.auth?.mode !== 'none', value: readAccessPassword() },
         tunnel: tunnelState(),
-        tailscale,
         autostart,
         platform: process.platform,
       })
@@ -367,29 +330,6 @@ export function createControl({ cfg, configPath, log, readState, version }) {
       if (body.action === 'stop') { json(res, 200, stopTunnel()); return }
       const result = await startTunnel()
       json(res, result.ok ? 200 : 500, { ...result, tunnel: tunnelState() })
-      return
-    }
-
-    if (route === '/__api/tailscale' && req.method === 'POST') {
-      const body = await readJson(req)
-      const state = await tailscaleState(true)
-      if (!state.connected && body.action !== 'reset') {
-        json(res, 400, { ok: false, error: 'Tailscale 未登录/未连接，请先登录同一账号' })
-        return
-      }
-      if (body.action === 'reset') {
-        const result = await runTailscale(['serve', 'reset'])
-        if (result.ok) { cfg.publicUrl = ''; persistConfig(); }
-        json(res, result.ok ? 200 : 500, { ...result, tailscale: await tailscaleState(true) })
-        return
-      }
-      const result = await runTailscale(['serve', '--bg', '--http=80', String(cfg.listenPort)])
-      const fresh = await tailscaleState(true)
-      if (result.ok && state.dnsName) {
-        cfg.publicUrl = `http://${state.dnsName}/`
-        persistConfig()
-      }
-      json(res, result.ok ? 200 : 500, { ...result, url: state.dnsName ? `http://${state.dnsName}/` : null, tailscale: fresh })
       return
     }
 

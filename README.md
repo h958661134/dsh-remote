@@ -25,7 +25,7 @@ DeepSeek Harness 桌面版的 Web GUI 只监听 `127.0.0.1`，并用**每个进�
 1. **在 Harness 进程里挂一个 30 行的插件**，把当前的 `端口 + 启动令牌` 写到一个小状态文件里（热加载，**不用重启 App**）；
 2. **在本机跑一个零依赖网关**：手机用你自己的口令登录，网关在后台用启动令牌换 Harness 的鉴权 Cookie，
    再把 HTTP / WebSocket 反向代理到 `127.0.0.1`，同时把 `Host`/`Origin` 改写回 loopback 以通过 Harness 的浏览器信任围栏；
-3. **任选一条“不在局域网也能连”的通道**：Tailscale、Cloudflare Tunnel、ngrok 或你自己的 VPS。
+3. **任选一条“不在局域网也能连”的通道**：Cloudflare Tunnel、ngrok 或你自己的 VPS（Tailscale 见下方“已知限制”）。
 
 ```mermaid
 flowchart LR
@@ -63,7 +63,7 @@ flowchart LR
 
 - **状态一眼看清**：Harness 是否在线、网关监听地址、开机自启开关；
 - **手机入口**：二维码、访问地址、访问口令（显示 / 复制 / 修改）；
-- **通道管理**：一键发布/撤销 Tailscale，或启动/停止 Cloudflare 隧道拿到新地址；
+- **通道管理**：一键启动/停止 Cloudflare 隧道并拿到新地址（Tailscale 已从面板移除）；
 - **日志**：网关最近 200 行日志，排错不用开终端。
 
 > 控制面板只接受来自本机（loopback Host）的请求；经隧道进来的外部请求一律 403 —— 它不能也不该从公网访问。
@@ -78,7 +78,7 @@ clone 仓库后严格按 docs/agent-prompt.md 执行——
 1) 安装 remote-gw 插件到 DSH desktop profile（先备份 cordis.patch.yml，等 remote-gw-state.json 出现）；
 2) node gateway/admin.mjs init 生成口令；
 3) 启动 gateway/server.mjs 并确认 /__health 的 ok:true；
-4) 问我选 Tailscale（私有）还是 Cloudflare 隧道（公网），按 scripts/ 里对应脚本发布；
+4) 默认用 Cloudflare 隧道（公网）；只有我明确要求私有网络才考虑 Tailscale，并提示它可能因 DERP 中继而不可用；
 5) 生成手机访问页与二维码；
 6) node gateway/selftest.mjs <口令> <地址> 必须 12/12；
 7) 汇报手机地址、口令、通道类型、开机自启状态和回滚命令。
@@ -97,7 +97,7 @@ clone 仓库后严格按 docs/agent-prompt.md 执行——
 ```powershell
 git clone https://github.com/h958661134/dsh-remote.git
 cd dsh-remote
-# 管理员 PowerShell（仅 Tailscale 安装需要管理员；纯隧道模式可不用）
+# 普通 PowerShell 即可（纯隧道模式不需要管理员权限）
 powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
 ```
 
@@ -115,11 +115,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
 
 | 通道 | 地址形态 | 是否需要账号 | 适合 |
 |---|---|---|---|
-| **Tailscale**（推荐，私有） | `http://<机器名>.<tailnet>.ts.net/` | 需要 Tailscale 账号（免费） | 只想自己设备能连，不暴露公网 |
+| **Tailscale**（⚠️ 不推荐） | `http://<机器名>.<tailnet>.ts.net/` | 需要 Tailscale 账号（免费） | 能直连时最私密；**无法打洞时会走 DERP 中继，前端可能加载不完** |
 | **Cloudflare 快速隧道** | `https://<随机>.trycloudflare.com` | 不需要 | 马上试通；地址每次重启变化 |
 | **Cloudflare 命名隧道** | `https://dsh.你的域名.com` | 需要域名 + Cloudflare | 固定地址、长期使用 |
 | **ngrok 免费域名** | `https://xxx.ngrok-free.app` | 需要 ngrok 账号 | 固定地址、不想买域名 |
 | **自建 VPS + frp/nginx** | 你的域名 | 需要 VPS | 最快最稳、完全自控 |
+
+> ⚠️ **Tailscale 默认不作为推荐方案**：在部分网络（尤其中国大陆）两端无法直连时会经由 DERP 中继，
+> 延迟 300–500ms 且吞吐很低，~1.7MB 的 Harness 前端加载不完 → 手机白屏 / 卡在 Loading plugins。
+> 控制面板已不提供该通道；确实需要私有网络时见 [docs/deployment.md](docs/deployment.md)。
 
 具体命令见 [docs/deployment.md](docs/deployment.md)。
 
@@ -225,7 +229,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\doctor.ps1 -Fix   # 自动修
 | 页面能开但会话/任务为空 | 网关版本旧（POST body 未转发），升级后正常 |
 | `Harness 未运行` | 桌面 App 没开，或插件没装 |
 | 401 / 登录页反复出现 | 口令错误，或 Cookie 被清 |
-| 手机打不开地址 | Tailscale 没开 / 隧道没起 / DNS |
+| 手机打不开地址 | 隧道没起 / 手机网络 / DNS |
 
 ## 贡献
 

@@ -1,4 +1,6 @@
-# Tailscale (private) example
+# Tailscale example — NOT RECOMMENDED.
+# When NAT traversal fails Tailscale relays via DERP (300-500ms, low throughput)
+# and the harness frontend may never load. Prefer a Cloudflare tunnel or a VPS.
 #
 # Publish the gateway to your tailnet with plain HTTP on port 80 (no certificates):
 #   tailscale serve --bg --http=80 8787

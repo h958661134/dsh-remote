@@ -49,7 +49,7 @@ if (Test-Path $ConfigFile) { Pass 'gateway/config.json 存在' } else { Fail 'ga
 if (Test-Path (Join-Path $StartupDir 'dsh-remote-gateway.vbs')) { Pass '开机自启已注册' } else { Warn '开机自启未注册' }
 
 Write-Host ''
-Write-Host '=== 6. Tailscale（可选） ===' -ForegroundColor Cyan
+Write-Host '=== 6. Tailscale（可选，可能不可用） ===' -ForegroundColor Cyan
 $tailscale = (Get-Command tailscale -ErrorAction SilentlyContinue).Source
 if (-not $tailscale) {
   $candidate = Join-Path $env:ProgramFiles 'Tailscale\tailscale.exe'
@@ -60,7 +60,7 @@ if ($tailscale) {
   if ($status -and $status.BackendState -eq 'Running') { Pass "Tailscale 已连接（$($status.Self.DNSName.TrimEnd('.'))）" }
   else { Warn 'Tailscale 未登录/未连接' }
   $serve = (& $tailscale serve status 2>&1) -join "`n"
-  if ($serve -match 'proxy http://127\.0\.0\.1:8787') { Pass 'Serve 已发布到 8787' } else { Warn 'Serve 未发布（用 enable-tailscale.ps1）' }
+  if ($serve -match 'proxy http://127\.0\.0\.1:8787') { Warn 'Serve 已发布：Tailscale 若走 DERP 中继会导致手机加载失败' } else { Warn 'Serve 未发布（该通道不推荐，优先用 Cloudflare 隧道）' }
 } else { Warn '未安装 Tailscale' }
 
 Write-Host ''

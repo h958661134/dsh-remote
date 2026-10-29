@@ -20,7 +20,7 @@ and a signed cookie. From a phone you get `401 dsh web authentication required`.
 2. **A zero-dependency local gateway** (`gateway/server.mjs`): you log in with a password, the gateway
    exchanges the launch token for the Harness cookie and reverse-proxies HTTP + WebSocket to `127.0.0.1`,
    rewriting `Host`/`Origin` back to loopback so the Harness browser-trust fence accepts it.
-3. **Any transport that works beyond the LAN**: Tailscale, Cloudflare Tunnel, ngrok, or your own VPS.
+3. **Any transport that works beyond the LAN**: Cloudflare Tunnel, ngrok, or your own VPS (Tailscale is documented but not recommended — see Limitations).
 
 ```mermaid
 flowchart LR
@@ -61,7 +61,7 @@ What the panel does:
 
 - status at a glance: harness online, gateway listener, autostart switch;
 - phone entry: QR code, public URL, access password (reveal / copy / change);
-- transports: publish/revoke Tailscale, start/stop the Cloudflare tunnel and get the new URL;
+- transports: start/stop the Cloudflare tunnel and get the new URL (Tailscale was removed from the panel);
 - logs: the last 200 gateway log lines, so you rarely need a terminal.
 
 > The panel only accepts requests with a loopback Host header; tunneled traffic gets 403 — it
@@ -78,7 +78,7 @@ Clone the repo, then follow docs/agent-prompt.md exactly:
    wait for remote-gw-state.json);
 2) run `node gateway/admin.mjs init` to create the password;
 3) start gateway/server.mjs and confirm /__health returns ok:true;
-4) ask me to choose Tailscale (private) or a Cloudflare tunnel (public), then run the matching
+4) default to a Cloudflare tunnel (public); consider Tailscale only if I explicitly ask for a private
    script from scripts/;
 5) render the phone access page and QR code;
 6) `node gateway/selftest.mjs <password> <url>` must pass 12/12;
@@ -111,11 +111,16 @@ autostart entry.
 
 | Transport | Address | Account | When |
 |---|---|---|---|
-| **Tailscale** (recommended, private) | `http://<machine>.<tailnet>.ts.net/` | Tailscale account (free) | only your own devices, no public exposure |
+| **Tailscale** (⚠️ not recommended) | `http://<machine>.<tailnet>.ts.net/` | Tailscale account (free) | most private when direct; **falls back to DERP relay where the frontend may never load** |
 | **Cloudflare quick tunnel** | `https://<random>.trycloudflare.com` | none | instant test; URL changes on restart |
 | **Cloudflare named tunnel** | `https://dsh.example.com` | domain + Cloudflare | stable public URL |
 | **ngrok free domain** | `https://xxx.ngrok-free.app` | ngrok account | stable URL without a domain |
 | **Your VPS + frp/nginx** | your domain | a VPS | fastest, fully self-hosted |
+
+> ⚠️ **Tailscale is not the recommended path.** On networks where both peers cannot punch through,
+> traffic is relayed through DERP (300–500 ms, low throughput) and the ~1.7 MB harness frontend never
+> finishes loading — the phone shows a blank screen or stays on "Loading plugins". The control panel no
+> longer offers it; use Cloudflare/ngrok/VPS when in doubt.
 
 Commands for each are in [docs/deployment.md](docs/deployment.md).
 

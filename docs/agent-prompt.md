@@ -52,18 +52,19 @@ Agent 会完成：装插件 → 生成配置 → 起网关 → 打通一条非�
 - 访问 http://127.0.0.1:8787/__health，必须返回 "ok": true。
 - 运行：node gateway/selftest.mjs <口令> http://127.0.0.1:8787 ，必须 12/12 通过。
 
-【第 4 步：选一条“非局域网”通道（先问用户选 A 还是 B）】
-A. 私有（推荐）：安装并登录 Tailscale（电脑与手机登录同一账号），然后
-   - Windows: powershell -ExecutionPolicy Bypass -File .\scripts\enable-tailscale.ps1
-   - Linux/macOS: tailscale serve --bg --http=80 8787
-   手机地址形如 http://<机器名>.<tailnet>.ts.net/
-B. 公网（无需账号，地址每次重启变化）：
+【第 4 步：开通一条“非局域网”通道】
+默认用 A，除非用户明确要求私有网络：
+A. 公网（默认，无需账号，地址每次重启变化）：
    - 下载 cloudflared 到 bin/（Windows 二进制或对应平台版本），
    - Windows: powershell -ExecutionPolicy Bypass -File .\scripts\refresh-tunnel.ps1
    - 或手动：cloudflared tunnel --url http://127.0.0.1:8787
    手机地址形如 https://<随机>.trycloudflare.com
 - 发布成功后，把地址写入 gateway/tunnel-url.txt；HTTPS 时把 gateway/config.json 的
   publicUrl 设为该地址并重启网关（让会话 Cookie 带 Secure）。
+
+B. （可选，仅在用户明确要求时）Tailscale —— **先警告**：两端无法打洞时会走 DERP 中继
+   （300–500ms、低吞吐），1.7MB 前端可能加载不完，手机白屏/卡 Loading plugins。
+   验证：tailscale ping <手机IP> 显示 via DERP(...) 就不要用。
 
 【第 5 步：生成手机入口】
 - 如系统有 python3 且能 pip install qrcode pillow：
@@ -77,9 +78,9 @@ B. 公网（无需账号，地址每次重启变化）：
 
 【第 7 步：汇报给用户】
 请给出：
-1) 手机访问地址（Tailscale 或 https 隧道地址）
+1) 手机访问地址（https 公网隧道地址）
 2) 访问口令
-3) 使用的通道类型（Tailscale / Cloudflare 快速隧道 / 其他）
+3) 使用的通道类型（Cloudflare 快速隧道 / 其他）
 4) 是否已配置开机自启（scripts/install.ps1 会装；也可手动把 scripts/start-gateway.vbs
    复制到启动文件夹）
 5) 回滚方式：powershell -ExecutionPolicy Bypass -File .\scripts\uninstall.ps1
@@ -140,15 +141,17 @@ Step 3 — start and verify locally
 - GET http://127.0.0.1:8787/__health must return "ok": true.
 - node gateway/selftest.mjs <password> http://127.0.0.1:8787 must pass 12/12.
 
-Step 4 — pick one non-LAN transport (ask the user)
-A. Private: Tailscale (same account on computer and phone), then
-   Windows: powershell -ExecutionPolicy Bypass -File .\scripts\enable-tailscale.ps1
-   Linux/macOS: tailscale serve --bg --http=80 8787
-B. Public (no account, URL changes on restart): cloudflared quick tunnel
+Step 4 — open one non-LAN transport (default to the public tunnel)
+A. Public (default, no account, URL changes on restart): cloudflared quick tunnel
    Windows: powershell -ExecutionPolicy Bypass -File .\scripts\refresh-tunnel.ps1
    or: cloudflared tunnel --url http://127.0.0.1:8787
 - Write the resulting address to gateway/tunnel-url.txt; for HTTPS set publicUrl in
   gateway/config.json and restart the gateway so cookies get the Secure flag.
+
+B. (optional, only if the user explicitly asks for a private network) Tailscale — warn first:
+   when both peers cannot punch through, traffic is relayed via DERP (300-500ms, low
+   throughput) and the ~1.7MB frontend may never load (blank screen / stuck on
+   "Loading plugins"). Check with `tailscale ping <phone-ip>`; `via DERP(...)` means do not use it.
 
 Step 5 — phone entry page
 - If python3 with qrcode+pillow is available:
@@ -160,7 +163,7 @@ Step 6 — verify end to end
   "proxied POST /api/session/list reaches harness" check.
 
 Step 7 — report
-- phone URL, access password, transport used, autostart status, rollback command
+- phone URL, access password, transport used (public tunnel by default), autostart status, rollback command
   (powershell -ExecutionPolicy Bypass -File .\scripts\uninstall.ps1).
 
 Hard constraints

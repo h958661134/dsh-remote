@@ -69,15 +69,11 @@ function publicUrl (status) {
   if (status.tunnel && status.tunnel.url) {
     return status.tunnel.url.endsWith('/') ? status.tunnel.url : status.tunnel.url + '/'
   }
-  if (status.tailscale && status.tailscale.serving && status.tailscale.dnsName) {
-    return `http://${status.tailscale.dnsName}/`
-  }
   return ''
 }
 
 function transportLabel (status) {
   if (status.tunnel && status.tunnel.url) return '公网 · Cloudflare'
-  if (status.tailscale && status.tailscale.serving) return '私有 · Tailscale'
   return '未发布'
 }
 
@@ -160,34 +156,16 @@ function render (status) {
 
   drawQr(url)
 
-  // transports
-  const ts = status.tailscale || {}
-  const tsDot = $('ts-dot')
-  const tsButton = $('ts-btn')
-  tsDot.className = 'dot' + (ts.serving ? ' on' : (!ts.installed ? '' : (!ts.connected ? ' warn' : '')))
-  if (!ts.installed) {
-    $('ts-desc').textContent = '未安装。https://tailscale.com/download'
-    tsButton.textContent = '不可用'
-    tsButton.disabled = true
-  } else if (!ts.connected) {
-    $('ts-desc').textContent = '已安装但未登录，请先登录同一账号'
-    tsButton.textContent = '未登录'
-    tsButton.disabled = true
-  } else {
-    $('ts-desc').textContent = ts.serving ? `已发布到 ${ts.dnsName}` : '只有你账号下的设备能连，不暴露公网'
-    tsButton.textContent = ts.serving ? '撤销发布' : '发布'
-    tsButton.disabled = false
-    tsButton.classList.toggle('danger', Boolean(ts.serving))
-  }
-
+  // transport
   const tunnel = status.tunnel || {}
   const cfDot = $('cf-dot')
   const cfButton = $('cf-btn')
-  cfDot.className = 'dot' + (tunnel.running ? ' on' : (tunnel.starting ? ' warn' : ''))
-  if (tunnel.running && tunnel.url) {
-    $('cf-desc').textContent = tunnel.url.replace('https://', '')
-    cfButton.textContent = '停止'
-    cfButton.classList.add('danger')
+  const tunnelActive = Boolean(tunnel.running || tunnel.external)
+  cfDot.className = 'dot' + (tunnelActive ? ' on' : (tunnel.starting ? ' warn' : ''))
+  if (tunnelActive && tunnel.url) {
+    $('cf-desc').textContent = tunnel.url.replace('https://', '') + (tunnel.external ? '（由脚本启动）' : '')
+    cfButton.textContent = tunnel.running ? '停止' : '重新生成'
+    cfButton.classList.toggle('danger', Boolean(tunnel.running))
     cfButton.disabled = false
   } else if (tunnel.starting) {
     $('cf-desc').textContent = '正在分配地址…'
@@ -195,7 +173,7 @@ function render (status) {
     cfButton.disabled = true
     cfButton.classList.remove('danger')
   } else {
-    $('cf-desc').textContent = 'HTTPS 公网地址，无需账号；地址重启会变'
+    $('cf-desc').textContent = 'HTTPS 公网地址，无需账号；地址在隧道重启后会变'
     cfButton.textContent = '启动'
     cfButton.classList.remove('danger')
     cfButton.disabled = false
@@ -262,24 +240,6 @@ function bindActions () {
   })
 
   $('logs-refresh').addEventListener('click', refreshLogs)
-
-  $('ts-btn').addEventListener('click', async () => {
-    const status = state.status
-    if (!status) return
-    const action = status.tailscale.serving ? 'reset' : 'serve'
-    const button = $('ts-btn')
-    setBusy(button, true)
-    try {
-      const result = await api('/__api/tailscale', { method: 'POST', body: JSON.stringify({ action }) })
-      toast(action === 'serve' ? `已发布：${result.url || '完成'}` : '已撤销发布')
-      await refresh()
-    } catch (error) {
-      toast(error.message)
-    } finally {
-      setBusy(button, false)
-      await refresh()
-    }
-  })
 
   $('cf-btn').addEventListener('click', async () => {
     const status = state.status

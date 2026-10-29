@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>dsh-remote · 控制台</title>
-  <link rel="icon" href="data:,">`n  <link rel="stylesheet" href="/__ui/style.css">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/__ui/style.css">
 </head>
 <body>
   <div class="app">
@@ -58,24 +59,22 @@
         <section class="card">
           <div class="card-head">
             <h2>通道</h2>
-            <span class="muted small">二选一即可</span>
-          </div>
-
-          <div class="transport" id="ts-row">
-            <div class="transport-main">
-              <div class="transport-title"><span class="dot" id="ts-dot"></span><b>Tailscale</b><span class="tag tiny">私有</span></div>
-              <p class="muted small" id="ts-desc">只有你账号下的设备能连，不暴露公网</p>
-            </div>
-            <button class="ghost" id="ts-btn">发布</button>
+            <span class="muted small">HTTPS 公网，推荐</span>
           </div>
 
           <div class="transport" id="cf-row">
             <div class="transport-main">
-              <div class="transport-title"><span class="dot" id="cf-dot"></span><b>Cloudflare 隧道</b><span class="tag tiny">公网</span></div>
-              <p class="muted small" id="cf-desc">HTTPS 公网地址，无需账号；地址重启会变</p>
+              <div class="transport-title"><span class="dot" id="cf-dot"></span><b>Cloudflare 隧道</b><span class="tag tiny on">推荐</span></div>
+              <p class="muted small" id="cf-desc">HTTPS 公网地址，无需账号；地址在隧道重启后会变</p>
             </div>
             <button class="ghost" id="cf-btn">启动</button>
           </div>
+
+          <p class="muted small transport-note">
+            Tailscale 通道在部分网络（尤其国内）会走 DERP 中继，几百毫秒延迟 + 低吞吐，
+            1.7MB 的前端可能加载不完，因此已从面板移除；确实想用时见
+            <code>docs/deployment.md</code> 与 <code>scripts/enable-tailscale.ps1</code>。
+          </p>
         </section>
 
         <section class="card">
@@ -98,7 +97,7 @@
     </main>
 
     <footer class="footer">
-      <span>网关只监听 127.0.0.1 · 手机通过 Tailscale 或隧道接入</span>
+      <span>网关只监听 127.0.0.1 · 手机通过 Cloudflare 隧道接入</span>
       <span class="muted">dsh-remote · MIT</span>
     </footer>
   </div>
