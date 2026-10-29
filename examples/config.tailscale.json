@@ -1,0 +1,14 @@
+# Tailscale (private) example
+#
+# Publish the gateway to your tailnet with plain HTTP on port 80 (no certificates):
+#   tailscale serve --bg --http=80 8787
+# Phone URL: http://<machine>.<tailnet>.ts.net/
+#
+# gateway/config.json:
+{
+  "listenHost": "127.0.0.1",
+  "listenPort": 8787,
+  "auth": { "mode": "password", "password": "<from admin.mjs init>" },
+  "sessionMaxAgeDays": 30,
+  "publicUrl": ""
+}

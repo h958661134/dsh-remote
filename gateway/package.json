@@ -1,0 +1,34 @@
+{
+  "name": "dsh-remote-gateway",
+  "version": "0.1.0",
+  "description": "Expose the DeepSeek Harness desktop app to your phone over the internet — no LAN required.",
+  "type": "module",
+  "bin": {
+    "dsh-remote-gateway": "./server.mjs"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node server.mjs --check",
+    "selftest": "node selftest.mjs",
+    "probe": "node probe-browser.mjs"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "remote-access",
+    "reverse-proxy",
+    "tailscale",
+    "cloudflare-tunnel"
+  ],
+  "license": "MIT",
+  "files": [
+    "server.mjs",
+    "admin.mjs",
+    "selftest.mjs",
+    "probe-browser.mjs",
+    "config.example.json"
+  ]
+}

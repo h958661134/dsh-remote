@@ -1,0 +1,23 @@
+# runtime
+node_modules/
+config.json
+access.txt
+gateway.log
+gateway.err.log
+tunnel.log
+tunnel.err.log
+tunnel-url.txt
+remote-gw-state.json
+phone-access.html
+phone-qr.png
+
+# tooling
+__pycache__/
+*.pyc
+.venv/
+pylib/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

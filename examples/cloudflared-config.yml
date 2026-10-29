@@ -1,0 +1,18 @@
+# Cloudflare named tunnel example
+#
+# 1) cloudflared tunnel login
+# 2) cloudflared tunnel create dsh
+# 3) cloudflared tunnel route dns dsh dsh.example.com
+# 4) save this file as %USERPROFILE%\.cloudflared\config.yml
+# 5) cloudflared tunnel run dsh   (or: cloudflared service install)
+#
+# Put the domain in gateway/config.json as publicUrl so cookies are Secure:
+#   "publicUrl": "https://dsh.example.com"
+
+tunnel: dsh
+credentials-file: C:\Users\<you>\.cloudflared\<tunnel-id>.json
+
+ingress:
+  - hostname: dsh.example.com
+    service: http://127.0.0.1:8787
+  - service: http_status:404
