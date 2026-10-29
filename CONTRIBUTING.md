@@ -38,3 +38,14 @@ The selftest requires a running DeepSeek Harness desktop instance (it proxies to
 1. One logical change per PR.
 2. Update `docs/` when behaviour changes; keep `README.md` and `README.en.md` in sync.
 3. Run the checks in `.github/workflows/ci.yml` locally if you can.
+## Branch protection on `main`
+
+`main` is protected:
+
+- all five CI checks must pass (`page generators`, `gateway (node 18.x|20.x|22.x)`, `windows scripts parse`);
+- the branch must be up to date with `main` before merging (strict);
+- changes land through a pull request (no approval required — this is a small project);
+- force pushes and branch deletion are disabled, and conversations must be resolved.
+
+Repository admins can still push hotfixes directly, which is deliberate: it keeps emergency
+documentation fixes fast without weakening the rules for contributors.
