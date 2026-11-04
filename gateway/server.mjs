@@ -936,7 +936,7 @@ function readBody (req, limit = 64 * 1024) {
   })
 }
 
-const control = createControl({ cfg, configPath: CONFIG_PATH, log, readState, version: VERSION })
+const control = createControl({ cfg, configPath: CONFIG_PATH, log, readState, version: VERSION, isAuthed })
 
 const server = http.createServer(async (req, res) => {
   const startedAt = Date.now()
@@ -1010,6 +1010,10 @@ const server = http.createServer(async (req, res) => {
       }, null, 2))
       return
     }
+
+    // Authenticated extras beside the harness (Markdown viewer). They enforce
+    // their own trust rule, so they run before the generic login redirect.
+    if (control.handleAuthed(req, res, url)) return
 
     if (!isAuthed(req)) {
       const wantsHtml = String(req.headers.accept || '').includes('text/html')

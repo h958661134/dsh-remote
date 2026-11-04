@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Markdown 查看器 · dsh-remote</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+      background: #0a0c12; color: #e8ebf2;
+      font: 15px/1.7 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    header {
+      display: flex; gap: 10px; align-items: center; padding: 12px 16px;
+      border-bottom: 1px solid #232a38; background: #12151d; flex: none;
+    }
+    header .brand { font-weight: 700; letter-spacing: .3px; margin-right: 6px; white-space: nowrap; }
+    header input {
+      flex: 1; min-width: 0; font: 13px/1.4 ui-monospace, Consolas, monospace;
+      padding: 9px 12px; border-radius: 9px; border: 1px solid #232a38; background: #0d1017; color: #e8ebf2;
+    }
+    header input:focus { outline: none; border-color: #5b8cff; }
+    button {
+      font: inherit; cursor: pointer; border-radius: 9px; padding: 8px 14px;
+      border: 1px solid #232a38; background: #1a1f2b; color: #e8ebf2; white-space: nowrap;
+    }
+    button:hover { background: #202736; }
+    button.primary { background: #4f80f5; border-color: transparent; color: #fff; font-weight: 600; }
+    main { flex: 1; display: flex; min-height: 0; }
+    aside {
+      width: 290px; flex: none; border-right: 1px solid #232a38; overflow: auto;
+      background: #0e1118; padding: 10px;
+    }
+    aside .up { width: 100%; text-align: left; margin-bottom: 8px; font-size: 13px; color: #9aa3b6; }
+    aside a {
+      display: block; padding: 7px 10px; border-radius: 8px; color: #cfd6e6;
+      text-decoration: none; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    aside a.dir { color: #8fb0ff; }
+    aside a:hover { background: #182031; }
+    aside a.active { background: #1b2742; color: #fff; }
+    aside .empty { color: #6d7688; font-size: 12.5px; padding: 8px 10px; }
+    section { flex: 1; min-width: 0; overflow: auto; padding: 26px 34px 60px; }
+    .meta { color: #7c869c; font-size: 12.5px; margin-bottom: 18px; font-family: ui-monospace, Consolas, monospace; }
+    article { max-width: 860px; }
+    article h1, article h2, article h3, article h4, article h5, article h6 { line-height: 1.35; margin: 1.4em 0 .6em; }
+    article h1 { font-size: 26px; border-bottom: 1px solid #232a38; padding-bottom: 8px; }
+    article h2 { font-size: 21px; }
+    article h3 { font-size: 17px; }
+    article p { margin: .8em 0; }
+    article a { color: #6f9bff; }
+    article code {
+      background: #12161f; border: 1px solid #232a38; border-radius: 5px;
+      padding: 1px 5px; font-family: ui-monospace, Consolas, monospace; font-size: 13px;
+    }
+    article pre.md-code {
+      background: #0d1017; border: 1px solid #232a38; border-radius: 12px;
+      padding: 14px 16px; overflow: auto;
+    }
+    article pre.md-code code { background: none; border: 0; padding: 0; font-size: 13px; }
+    article blockquote {
+      margin: 1em 0; padding: 10px 16px; border-left: 3px solid #3a4b6e;
+      background: #0e131c; border-radius: 0 10px 10px 0; color: #b9c3d6;
+    }
+    article table.md-table { border-collapse: collapse; margin: 1em 0; font-size: 14px; }
+    article table.md-table th, article table.md-table td { border: 1px solid #232a38; padding: 6px 12px; }
+    article table.md-table th { background: #151b26; }
+    article hr { border: 0; border-top: 1px solid #232a38; margin: 1.8em 0; }
+    article ul.md-list, article ol.md-list { padding-left: 1.5em; margin: .7em 0; }
+    article li { margin: .3em 0; }
+    article .md-raw { white-space: pre-wrap; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+    .error { color: #ff8b8b; background: #1d1416; border: 1px solid #4a2a2e; padding: 12px 14px; border-radius: 10px; }
+    .hint { color: #7c869c; font-size: 13px; }
+    @media (max-width: 760px) {
+      aside { display: none; }
+      section { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand">MD 查看器</span>
+    <input id="path" placeholder="输入 .md 文件绝对路径，例如 E:\novel\mem\README.md" spellcheck="false">
+    <button id="open" class="primary">打开</button>
+    <button id="back">上一级</button>
+    <button id="panel">返回 Harness</button>
+  </header>
+  <main>
+    <aside id="list"><div class="empty">目录列表加载中…</div></aside>
+    <section><article id="content"><p class="hint">在左侧选择文件，或直接输入路径后点「打开」。</p></article></section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id)
+    let currentDir = localStorage.getItem('dshgw-md-dir') || ''
+
+    async function api (path) {
+      const response = await fetch(path, { cache: 'no-store' })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || ('HTTP ' + response.status))
+      return payload
+    }
+
+    function dirOf (filePath) {
+      const value = String(filePath || '')
+      const cut = Math.max(value.lastIndexOf('\\'), value.lastIndexOf('/'))
+      return cut > 0 ? value.slice(0, cut) : ''
+    }
+
+    function joinPath (dir, name) {
+      if (!dir) return name
+      const separator = dir.includes('\\') ? '\\' : '/'
+      return dir.endsWith(separator) ? dir + name : dir + separator + name
+    }
+
+    async function listDir (dir) {
+      const aside = $('list')
+      aside.innerHTML = '<div class="empty">加载中…</div>'
+      try {
+        const data = await api('/md/api/list?path=' + encodeURIComponent(dir))
+        currentDir = data.path
+        localStorage.setItem('dshgw-md-dir', currentDir)
+        $('path').value = currentDir
+        const parts = []
+        parts.push('<button class="up" id="go-up">↑ ' + (data.parent ? '上一级' : '（根目录）') + '</button>')
+        if (data.parent) {
+          parts.push(`<a href="#" class="dir" data-path="${escapeAttr(data.parent)}">📁 ..</a>`)
+        }
+        for (const entry of data.entries) {
+          const cls = entry.dir ? 'dir' : 'file'
+          const icon = entry.dir ? '📁' : '📄'
+          parts.push(`<a href="#" class="${cls}" data-path="${escapeAttr(entry.path)}">${icon} ${escapeText(entry.name)}</a>`)
+        }
+        if (!data.entries.length) parts.push('<div class="empty">（空目录，或用上面的输入框打开任意路径）</div>')
+        aside.innerHTML = parts.join('')
+        aside.querySelectorAll('a').forEach((anchor) => {
+          anchor.addEventListener('click', (event) => {
+            event.preventDefault()
+            const target = anchor.dataset.path
+            if (anchor.classList.contains('dir')) listDir(target)
+            else openFile(target)
+          })
+        })
+        const up = $('go-up')
+        if (up) up.addEventListener('click', () => data.parent && listDir(data.parent))
+      } catch (error) {
+        aside.innerHTML = '<div class="empty">无法列出目录：' + escapeText(error.message) + '</div>'
+      }
+    }
+
+    async function openFile (filePath) {
+      const content = $('content')
+      content.innerHTML = '<p class="hint">读取中…</p>'
+      try {
+        const data = await api('/md/api/read?path=' + encodeURIComponent(filePath))
+        $('path').value = data.path
+        currentDir = dirOf(data.path)
+        localStorage.setItem('dshgw-md-dir', currentDir)
+        const meta = `${data.path} · ${formatBytes(data.bytes)} · ${new Date(data.mtime).toLocaleString()}`
+        content.innerHTML = `<div class="meta">${escapeText(meta)}</div>` + (data.html || '<p>（空文件）</p>')
+        // open relative links inside the viewer
+        content.querySelectorAll('a[href]').forEach((anchor) => {
+          const href = anchor.getAttribute('href')
+          if (!href || /^(https?:|mailto:|#)/i.test(href)) return
+          if (!/\.(md|markdown|txt)$/i.test(href)) return
+          anchor.addEventListener('click', (event) => {
+            event.preventDefault()
+            openFile(joinPath(currentDir, decodeURIComponent(href)))
+          })
+        })
+        window.scrollTo(0, 0)
+        content.scrollIntoView({ block: 'start' })
+        // keep the directory sidebar in sync with the opened file
+        listDir(currentDir)
+      } catch (error) {
+        content.innerHTML = '<div class="error">' + escapeText(error.message) + '</div>'
+      }
+    }
+
+    function formatBytes (bytes) {
+      if (!Number.isFinite(bytes)) return ''
+      if (bytes < 1024) return bytes + ' B'
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+      return (bytes / 1024 / 1024).toFixed(2) + ' MB'
+    }
+
+    function escapeText (value) {
+      return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+    }
+
+    function escapeAttr (value) { return escapeText(value) }
+
+    $('open').addEventListener('click', () => {
+      const value = $('path').value.trim()
+      if (!value) return
+      if (/\.(md|markdown|txt)$/i.test(value)) openFile(value)
+      else listDir(value)
+    })
+    $('path').addEventListener('keydown', (event) => { if (event.key === 'Enter') $('open').click() })
+    $('back').addEventListener('click', () => {
+      const parent = dirOf($('path').value.trim())
+      if (parent) listDir(parent)
+    })
+    $('panel').addEventListener('click', () => { location.href = '/__ui/' })
+
+    const initial = $('path').value || currentDir
+    const fromQuery = new URLSearchParams(location.search).get('path')
+    if (fromQuery) {
+      if (/\.(md|markdown|txt)$/i.test(fromQuery)) openFile(fromQuery)
+      else listDir(fromQuery)
+    } else if (initial) listDir(initial)
+    else listDir('C:\\Users')
+  </script>
+</body>
+</html>

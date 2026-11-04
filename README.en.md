@@ -67,6 +67,21 @@ What the panel does:
 > The panel only accepts requests with a loopback Host header; tunneled traffic gets 403 — it
 > cannot and should not be reachable from the internet.
 
+## Markdown viewer (`/md`)
+
+![Markdown viewer](docs/images/markdown-viewer.png)
+
+The gateway ships a **standalone Markdown reader** that does not depend on the harness
+client's file resource service — useful where the in-app document preview cannot load
+(for example browsers on the HarmonyOS ArkWeb engine).
+
+- URL: `https://<your tunnel host>/md` (password login required; locally `http://127.0.0.1:8787/md`)
+- Directory browser on the left, rendered Markdown on the right: headings, lists, fenced code,
+  tables, quotes, links
+- Safe by construction: HTML is escaped first, links are limited to `http/https/mailto` and
+  relative paths, remote images are never loaded
+- Reads `.md` / `.markdown` / `.txt`, 4 MB per file
+
 ## One-prompt setup (let your AI agent install it)
 
 Paste this into your AI agent (DeepSeek Harness itself, Claude Code, Codex CLI, Cursor — anything with shell access). It installs the plugin, starts the gateway, publishes it over a non-LAN transport, renders the phone QR page and runs the 12-check selftest:

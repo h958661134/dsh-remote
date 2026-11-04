@@ -20,9 +20,11 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { escapeHtml, renderMarkdown } from './markdown.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI_DIR = path.join(HERE, 'ui')
@@ -55,7 +57,7 @@ function findPython() {
   return process.platform === 'win32' ? 'python' : 'python3'
 }
 
-export function createControl({ cfg, configPath, log, readState, version }) {
+export function createControl({ cfg, configPath, log, readState, version, isAuthed = () => false }) {
   const tunnel = { child: null, url: null, starting: false, lastError: null }
 
   // ── helpers ────────────────────────────────────────────────────────────
@@ -269,9 +271,99 @@ export function createControl({ cfg, configPath, log, readState, version }) {
       stopTunnel()
     },
     tunnelSnapshot: tunnelState,
+
+    /**
+     * Authenticated Markdown viewer, reachable through the tunnel (unlike the
+     * loopback-only control panel). Loopback requests skip the cookie so the
+     * local panel can link to it directly.
+     * @returns {boolean} whether the request was handled
+     */
+    handleAuthed(req, res, url) {
+      const route = url.pathname
+      if (route !== '/md' && !route.startsWith('/md/')) return false
+      const allowed = isLoopbackHost(req) || isAuthed(req)
+      if (!allowed) {
+        if (route.startsWith('/md/api/')) {
+          json(res, 401, { ok: false, error: 'unauthorized' })
+          return true
+        }
+        res.writeHead(303, { location: '/__login', 'cache-control': 'no-store' })
+        res.end()
+        return true
+      }
+      if (route === '/md' || route === '/md/') {
+        sendFile(res, path.join(UI_DIR, 'markdown.html'))
+        return true
+      }
+      if (route === '/md/api/list' && req.method === 'GET') { viewerList(res, url); return true }
+      if (route === '/md/api/read' && req.method === 'GET') { viewerRead(res, url); return true }
+      json(res, 404, { ok: false, error: 'unknown endpoint' })
+      return true
+    },
+  }
+
+  function sendFile(res, target) {
+    fs.readFile(target, (error, data) => {
+      if (error) {
+        res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' })
+        res.end('not found')
+        return
+      }
+      res.writeHead(200, {
+        'content-type': MIME[path.extname(target).toLowerCase()] || 'application/octet-stream',
+        'cache-control': 'no-store',
+      })
+      res.end(data)
+    })
+  }
+
+  function viewerList(res, url) {
+    const requested = url.searchParams.get('path') || ''
+    let target = path.resolve(requested || os.homedir())
+    try {
+      if (!fs.statSync(target).isDirectory()) target = path.dirname(target)
+    } catch {
+      target = path.dirname(target)
+    }
+    try {
+      const entries = []
+      for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '$RECYCLE.BIN') continue
+        const child = path.join(target, entry.name)
+        if (entry.isDirectory()) {
+          entries.push({ name: entry.name, path: child, dir: true })
+        } else if (/\.(md|markdown|txt)$/i.test(entry.name)) {
+          let size = 0
+          try { size = fs.statSync(child).size } catch {}
+          entries.push({ name: entry.name, path: child, dir: false, size })
+        }
+      }
+      entries.sort((a, b) => (a.dir === b.dir ? a.name.localeCompare(b.name) : a.dir ? -1 : 1))
+      const parent = path.dirname(target)
+      json(res, 200, { path: target, parent: parent === target ? null : parent, entries })
+    } catch (error) {
+      json(res, 400, { ok: false, error: `无法读取目录：${error.message}` })
+    }
+  }
+
+  function viewerRead(res, url) {
+    const target = path.resolve(url.searchParams.get('path') || '')
+    try {
+      const stat = fs.statSync(target)
+      if (!stat.isFile()) { json(res, 400, { ok: false, error: '不是一个文件' }); return }
+      if (stat.size > 4 * 1024 * 1024) { json(res, 400, { ok: false, error: '文件过大（超过 4MB）' }); return }
+      const isMarkdown = /\.(md|markdown)$/i.test(target)
+      const text = fs.readFileSync(target, 'utf8').replace(/^\uFEFF/, '')
+      const html = isMarkdown ? renderMarkdown(text) : `<pre class="md-raw">${escapeHtml(text)}</pre>`
+      json(res, 200, { path: target, bytes: stat.size, mtime: stat.mtimeMs, html })
+    } catch (error) {
+      json(res, 400, { ok: false, error: `无法读取文件：${error.message}` })
+    }
   }
 
   function serveUi(res, pathname) {
+    // Friendly route: /__ui/markdown serves the standalone Markdown viewer.
+    if (pathname === '/__ui/markdown' || pathname === '/__ui/markdown/') pathname = '/__ui/markdown.html'
     let relative = pathname.replace(/^\/__ui\/?/, '') || 'index.html'
     if (relative.endsWith('/')) relative += 'index.html'
     const target = path.normalize(path.join(UI_DIR, relative))
@@ -312,6 +404,10 @@ export function createControl({ cfg, configPath, log, readState, version }) {
       })
       return
     }
+
+    if (route === '/__api/fs/list' && req.method === 'GET') { viewerList(res, url); return }
+
+    if (route === '/__api/markdown' && req.method === 'GET') { viewerRead(res, url); return }
 
     if (route === '/__api/password' && req.method === 'POST') {
       const body = await readJson(req)

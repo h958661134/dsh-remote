@@ -192,3 +192,12 @@ dialog input:focus { outline: none; border-color: var(--accent); }
   box-shadow: var(--shadow); z-index: 20;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* anchor styled as a primary button (used by the Markdown viewer entry) */
+.btn-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 16px; border-radius: 10px; text-decoration: none;
+  background: linear-gradient(180deg, #6a97ff, #4f80f5); color: #fff;
+  font-weight: 600; font-size: 14px; box-shadow: 0 10px 24px rgba(91, 140, 255, .3);
+}
+.btn-link:hover { filter: brightness(1.06); }

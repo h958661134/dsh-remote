@@ -68,6 +68,18 @@ flowchart LR
 
 > 控制面板只接受来自本机（loopback Host）的请求；经隧道进来的外部请求一律 403 —— 它不能也不该从公网访问。
 
+## Markdown 查看器（`/md`）
+
+![Markdown 查看器](docs/images/markdown-viewer.png)
+
+网关自带一个**独立的 Markdown 阅读器**，完全不依赖 DSH 客户端的文件资源服务 ——
+用于客户端文档预览打不开的环境（例如 HarmonyOS 的 ArkWeb 内核浏览器）。
+
+- 地址：`https://<你的隧道地址>/md`（需要先通过网关口令登录；本机可直接开 `http://127.0.0.1:8787/md`）
+- 左侧目录浏览、右侧渲染：标题、列表、代码块、表格、引用、链接
+- 安全：渲染前先做 HTML 转义，链接只允许 `http/https/mailto` 与相对路径，不加载远程图片
+- 只读 `.md` / `.markdown` / `.txt`，单文件上限 4MB
+
 ## 一键 Prompt：让 AI Agent 帮你部署
 
 把下面这段直接粘给你的 AI Agent（Harness 自己、Claude Code、Codex CLI、Cursor 都行），它会自动装插件、起网关、打通一条非局域网通道、生成手机二维码并跑完 12 项自检：
