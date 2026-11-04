@@ -530,6 +530,29 @@ const CLIENT_SUPPORT = `<script>/* dsh-remote-gateway compat ${COMPAT_VERSION} *
 
   g.__DSHGW_COMPAT__ = '${COMPAT_VERSION}';
 
+  // Probe: record which client plugins the shell registers, so a remote browser
+  // with a partial plugin set can be diagnosed from the gateway log.
+  try {
+    var realLoader = null;
+    Object.defineProperty(window, '__ModuleLoader__', {
+      configurable: true,
+      get: function () { return realLoader },
+      set: function (value) {
+        realLoader = value;
+        try {
+          var originalLoad = value.load;
+          value.load = function (registration) {
+            try {
+              var list = window.__DSHGW_PLUGINS__ || (window.__DSHGW_PLUGINS__ = []);
+              if (registration && registration.id) list.push(String(registration.id));
+            } catch (e) {}
+            return originalLoad.apply(this, arguments);
+          };
+        } catch (e) {}
+      }
+    });
+  } catch (e) {}
+
   // ---- client diagnostics ----
   try {
     var sent = 0;
@@ -598,6 +621,9 @@ const CLIENT_SUPPORT = `<script>/* dsh-remote-gateway compat ${COMPAT_VERSION} *
           rootChildren: root.children.length,
           rootHtmlLen: root.innerHTML.length,
           scripts: scripts.slice(0, 30),
+          plugins: (window.__DSHGW_PLUGINS__ || []).filter(function (id) {
+            return /workspace-files|resources|documentpreview|sidebar-files/.test(id)
+          }).concat(['count=' + (window.__DSHGW_PLUGINS__ || []).length]),
           resources: resources,
           elapsed: Math.round(performance.now()),
         });
@@ -859,15 +885,40 @@ async function handleUpgrade (req, socket, head) {
   lines.push('Connection: Upgrade')
   lines.push(`Upgrade: ${req.headers.upgrade || 'websocket'}`)
 
+  const startedAt = Date.now()
+  log(`UPGRADE-OPEN ${req.url} ua="${ua}"`)
+
+  // Server-side WebSocket ping every 20s: keeps NAT/tunnel idle timers alive and
+  // lets a dead peer surface quickly. Control frames are legal in either direction
+  // and browsers answer with pong automatically, so the app never sees them.
+  let alive = true
+  let pingTimer = null
+
   const upstream = net.connect(state.port, '127.0.0.1', () => {
     upstream.write(lines.join('\r\n') + '\r\n\r\n')
     if (head && head.length) upstream.write(head)
     upstream.pipe(socket)
     socket.pipe(upstream)
+    pingTimer = setInterval(() => {
+      if (!alive) { try { socket.destroy() } catch {} return }
+      alive = false
+      try { socket.write(Buffer.from([0x89, 0x00])) } catch {}
+    }, 20000)
+    pingTimer.unref?.()
   })
-  upstream.on('error', () => socket.destroy())
-  upstream.on('close', () => socket.destroy())
-  socket.on('close', () => upstream.destroy())
+
+  const close = (reason) => {
+    if (pingTimer) clearInterval(pingTimer)
+    log(`UPGRADE-CLOSE ${req.url} ${Date.now() - startedAt}ms reason=${reason} ua="${ua}"`)
+    try { socket.destroy() } catch {}
+    try { upstream.destroy() } catch {}
+  }
+
+  upstream.on('error', () => close('upstream-error'))
+  upstream.on('close', () => close('upstream-close'))
+  socket.on('data', () => { alive = true })
+  socket.on('close', () => close('client-close'))
+  socket.on('error', () => close('client-error'))
 }
 
 // ─────────────────────────────── server ──────────────────────────────────

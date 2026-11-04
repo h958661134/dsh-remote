@@ -92,3 +92,31 @@ node gateway\probe-browser.mjs http://127.0.0.1:8787 --emulate-old
 | 手机一直 Loading plugins、无 JS 报错 | Tailscale 中继 400ms，1.7MB 前端传不完 | 改用 Cloudflare/ngrok/VPS 通道 |
 | 界面能开但会话全空、`/api/*` 全 502 20s | 网关转发 POST 时丢了 body | 缓冲请求体后再转发，并加重试 |
 | 桌面页二维码过期 | 快速隧道地址变化 | 重跑 `refresh-tunnel.ps1` |
+
+## HarmonyOS PC（ArkWeb）：文档预览显示「文件资源服务不可用」
+
+**现象**：通过网关访问时，聊天、任务、文件树都正常，但打开 `.md` / Office 等文档预览，面板提示
+`文件资源服务不可用`；同一地址在手机 Chrome 上完全正常。
+
+**定位结论**（已实测确认）：
+
+| 检查项 | 结果 |
+|---|---|
+| 页面加载 | 全新加载，`GET /`、静态资源、插件包全部 200 |
+| 客户端报错 | 零 JS 报错，模块加载器已 `live`、`pendingQueue: 0` |
+| 网关转发 | 正常，`/api/workspaceFiles/list` 等全部 200 |
+| 更换 UA | 无效（UA 伪装成 Windows Chrome 后仍然报错） |
+| 手机 Chrome | 正常 |
+
+该文案来自 `dsh-client-ui-sidebar-documentpreview`，触发条件是资源层 `meta.status === "none"`，
+即客户端**没有注册 `dsh-resource://file/...` 的资源提供器**。提供器由 `dsh-api-workspace-files` 的
+客户端插件注册，依赖 `resources`、`remote`、`remote.workspaceFiles` 三个客户端服务；在 ArkWeb 内核上
+这一注册没有完成，属于**客户端插件加载层的问题**，网关侧无法修复。
+
+**绕过方式**：
+
+- 用**手机浏览器**打开同一地址查看文档（已验证正常）；
+- 或在那台机器上换用 **Chrome / Edge**（非 ArkWeb 内核）访问。
+
+**相关改进**：v0.2 起网关会对每条 WebSocket 连接每 20 秒发送一次 ping，避免隧道空闲超时导致
+长连接反复断开、客户端资源服务重新注册失败；`UPGRADE-OPEN` / `UPGRADE-CLOSE` 日志可用于确认连接时长。
