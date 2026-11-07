@@ -148,6 +148,11 @@ if (args.includes('--emulate-old')) {
   })
 }
 await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile: true })
+// --cookie "name=value" lets the probe reach pages behind the gateway login.
+const cookieHeader = flag('--cookie', '')
+if (cookieHeader) {
+  await send('Network.setExtraHTTPHeaders', { headers: { Cookie: cookieHeader } })
+}
 await send('Page.navigate', { url })
 await sleep(waitMs)
 

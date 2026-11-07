@@ -122,3 +122,40 @@ node gateway\probe-browser.mjs http://127.0.0.1:8787 --emulate-old
 
 **相关改进**：v0.2 起网关会对每条 WebSocket 连接每 20 秒发送一次 ping，避免隧道空闲超时导致
 长连接反复断开、客户端资源服务重新注册失败；`UPGRADE-OPEN` / `UPGRADE-CLOSE` 日志可用于确认连接时长。
+## 远程页面打不开 / 只显示错误：「boot: 1 entry not activated <插件名>」
+
+**现象**：通过网关打开页面时，界面不渲染（DOM 几乎为空），页面/控制台出现类似
+`boot: 1 entry not activated dsh-sidebar-balance` 的错误；但电脑上的桌面 Harness 本身能用。
+
+**原因**：profile 里装了一个**客户端插件无法激活**的第三方插件。DSH 的 Web 外壳在启动时要求
+所有 boot-graph 条目都能激活，只要有一个失败就整体不渲染，于是远程端（和任何浏览器端）都打不开。
+常见触发点：插件的 `dsh.client.inject` 里声明了**当前 DSH 版本不存在的客户端服务**
+（例如 `@deepseek-ai/dsh-client-runtime` 在 DSH 0.2.x 中已不存在）。
+
+**排查**：
+
+```powershell
+# 1) 看哪些第三方包被装进了 profile
+Get-Content "$env:USERPROFILE\.dsh\profiles\desktop\package.json"
+
+# 2) 用带登录 Cookie 的无头探针确认是"客户端启动失败"而不是网络问题
+node gateway\probe-browser.mjs http://127.0.0.1:8787/ --wait 12000 --cookie "<dshgw=...>"
+# 正常时 text 里能看到工作区/输入框；失败时 text 只有报错、htmlLength 很小
+```
+
+**修复**：在 profile 的 `cordis.patch.yml` 里禁用该条目（可逆，包仍保留）：
+
+```yaml
+- id: dsh-sidebar-balance
+  disabled: true
+```
+
+保存后 profile loader 会热更新，**刷新页面即可**（不需要重启 Harness）。确认条目已停用：
+
+```powershell
+# 页面 HTML 里不应再出现该插件名
+```
+
+**后续**：向插件作者反馈（附 DSH 版本与缺失的服务名），或等插件适配后再把 `disabled` 去掉。
+本项目实测案例：`dsh-sidebar-balance@0.1.1`（声明需要 `@deepseek-ai/dsh-client-runtime`）
+在 DSH `0.2.1-rc.2` 上会导致远程页面完全无法渲染。
