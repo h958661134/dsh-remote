@@ -79,6 +79,9 @@ flowchart LR
 - 左侧目录浏览、右侧渲染：标题、列表、代码块、表格、引用、链接
 - 安全：渲染前先做 HTML 转义，链接只允许 `http/https/mailto` 与相对路径，不加载远程图片
 - 只读 `.md` / `.markdown` / `.txt`，单文件上限 4MB
+- **手机友好**：窄屏下目录收进左侧抽屉（点左上角 ☰ 打开），正文自适应、表格与代码块可横向滚动
+
+<p align="center"><img src="docs/images/markdown-viewer-mobile.png" width="320" alt="手机上的 Markdown 查看器"></p>
 
 ## 一键 Prompt：让 AI Agent 帮你部署
 

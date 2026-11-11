@@ -81,6 +81,10 @@ client's file resource service — useful where the in-app document preview cann
 - Safe by construction: HTML is escaped first, links are limited to `http/https/mailto` and
   relative paths, remote images are never loaded
 - Reads `.md` / `.markdown` / `.txt`, 4 MB per file
+- **Phone friendly**: on narrow screens the file list becomes a left drawer (tap ☰ in the
+  top-left), text reflows, and tables/code blocks scroll horizontally
+
+<p align="center"><img src="docs/images/markdown-viewer-mobile.png" width="320" alt="Markdown viewer on a phone"></p>
 
 ## One-prompt setup (let your AI agent install it)
 

@@ -2,11 +2,12 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0c12">
   <title>Markdown 查看器 · dsh-remote</title>
   <style>
     :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       margin: 0; min-height: 100vh; display: flex; flex-direction: column;
       background: #0a0c12; color: #e8ebf2;
@@ -28,6 +29,8 @@
     }
     button:hover { background: #202736; }
     button.primary { background: #4f80f5; border-color: transparent; color: #fff; font-weight: 600; }
+    #menu { display: none; padding: 8px 12px; font-size: 17px; line-height: 1; }
+    .backdrop { display: none; }
     main { flex: 1; display: flex; min-height: 0; }
     aside {
       width: 290px; flex: none; border-right: 1px solid #232a38; overflow: auto;
@@ -42,24 +45,29 @@
     aside a:hover { background: #182031; }
     aside a.active { background: #1b2742; color: #fff; }
     aside .empty { color: #6d7688; font-size: 12.5px; padding: 8px 10px; }
+    .drawer-foot { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #232a38; }
     section { flex: 1; min-width: 0; overflow: auto; padding: 26px 34px 60px; }
-    .meta { color: #7c869c; font-size: 12.5px; margin-bottom: 18px; font-family: ui-monospace, Consolas, monospace; }
+    .meta {
+      color: #7c869c; font-size: 12.5px; margin-bottom: 18px;
+      font-family: ui-monospace, Consolas, monospace;
+    }
     article { max-width: 860px; }
     article h1, article h2, article h3, article h4, article h5, article h6 { line-height: 1.35; margin: 1.4em 0 .6em; }
     article h1 { font-size: 26px; border-bottom: 1px solid #232a38; padding-bottom: 8px; }
     article h2 { font-size: 21px; }
     article h3 { font-size: 17px; }
     article p { margin: .8em 0; }
-    article a { color: #6f9bff; }
+    article a { color: #6f9bff; word-break: break-word; }
     article code {
       background: #12161f; border: 1px solid #232a38; border-radius: 5px;
       padding: 1px 5px; font-family: ui-monospace, Consolas, monospace; font-size: 13px;
+      word-break: break-word;
     }
     article pre.md-code {
       background: #0d1017; border: 1px solid #232a38; border-radius: 12px;
-      padding: 14px 16px; overflow: auto;
+      padding: 14px 16px; overflow: auto; -webkit-overflow-scrolling: touch;
     }
-    article pre.md-code code { background: none; border: 0; padding: 0; font-size: 13px; }
+    article pre.md-code code { background: none; border: 0; padding: 0; font-size: 13px; white-space: pre; }
     article blockquote {
       margin: 1em 0; padding: 10px 16px; border-left: 3px solid #3a4b6e;
       background: #0e131c; border-radius: 0 10px 10px 0; color: #b9c3d6;
@@ -73,27 +81,84 @@
     article .md-raw { white-space: pre-wrap; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
     .error { color: #ff8b8b; background: #1d1416; border: 1px solid #4a2a2e; padding: 12px 14px; border-radius: 10px; }
     .hint { color: #7c869c; font-size: 13px; }
-    @media (max-width: 760px) {
-      aside { display: none; }
-      section { padding: 18px; }
+
+    /* ── phone / narrow window ─────────────────────────────────────────── */
+    @media (max-width: 820px) {
+      header {
+        position: sticky; top: 0; z-index: 40;
+        flex-wrap: wrap; gap: 8px; padding: 10px 12px;
+        padding-top: max(10px, env(safe-area-inset-top));
+        background: rgba(18, 21, 29, .96); backdrop-filter: blur(10px);
+      }
+      header .brand, .desktop-only { display: none; }
+      #menu { display: inline-flex; align-items: center; }
+      header input { flex: 1 1 auto; font-size: 16px; padding: 10px 12px; }
+      #open { padding: 10px 16px; }
+
+      aside {
+        position: fixed; top: 0; bottom: 0; left: 0; z-index: 60;
+        width: min(86vw, 340px); padding: 16px 12px;
+        padding-top: max(16px, env(safe-area-inset-top));
+        transform: translateX(-102%); transition: transform .22s ease;
+        box-shadow: 26px 0 48px rgba(0, 0, 0, .55);
+      }
+      body.nav-open aside { transform: none; }
+      body.nav-open .backdrop {
+        display: block; position: fixed; inset: 0; z-index: 55;
+        background: rgba(0, 0, 0, .55);
+      }
+      aside a { padding: 11px 12px; font-size: 14px; }
+      aside .up { padding: 11px 12px; font-size: 14px; }
+      .drawer-foot { display: block; }
+      .drawer-foot button { width: 100%; }
+
+      section {
+        padding: 16px 15px calc(48px + env(safe-area-inset-bottom));
+        overflow-x: hidden;
+      }
+      .meta { font-size: 11.5px; line-height: 1.5; word-break: break-all; margin-bottom: 14px; }
+      article h1 { font-size: 21px; }
+      article h2 { font-size: 18px; }
+      article h3 { font-size: 16px; }
+      article h4, article h5, article h6 { font-size: 15px; }
+      article pre.md-code { font-size: 12.5px; padding: 12px; border-radius: 10px; }
+      article code { font-size: 12.5px; }
+      article table.md-table {
+        display: block; overflow-x: auto; -webkit-overflow-scrolling: touch;
+        white-space: nowrap; font-size: 13px;
+      }
+      article blockquote { padding: 8px 12px; }
     }
   </style>
 </head>
 <body>
   <header>
+    <button id="menu" aria-label="文件列表">☰</button>
     <span class="brand">MD 查看器</span>
     <input id="path" placeholder="输入 .md 文件绝对路径，例如 E:\novel\mem\README.md" spellcheck="false">
     <button id="open" class="primary">打开</button>
-    <button id="back">上一级</button>
-    <button id="panel">返回 Harness</button>
+    <button id="back" class="desktop-only">上一级</button>
+    <button id="panel" class="desktop-only">返回 Harness</button>
   </header>
+
+  <div class="backdrop" id="backdrop"></div>
+
   <main>
-    <aside id="list"><div class="empty">目录列表加载中…</div></aside>
+    <aside id="list">
+      <div class="empty">目录列表加载中…</div>
+      <div class="drawer-foot"><button id="panel-mobile">返回 Harness</button></div>
+    </aside>
     <section><article id="content"><p class="hint">在左侧选择文件，或直接输入路径后点「打开」。</p></article></section>
   </main>
+
   <script>
     const $ = (id) => document.getElementById(id)
     let currentDir = localStorage.getItem('dshgw-md-dir') || ''
+
+    const isNarrow = () => window.matchMedia('(max-width: 820px)').matches
+    function setDrawer (open) {
+      document.body.classList.toggle('nav-open', open)
+    }
 
     async function api (path) {
       const response = await fetch(path, { cache: 'no-store' })
@@ -116,6 +181,7 @@
 
     async function listDir (dir) {
       const aside = $('list')
+      const foot = aside.querySelector('.drawer-foot').outerHTML
       aside.innerHTML = '<div class="empty">加载中…</div>'
       try {
         const data = await api('/md/api/list?path=' + encodeURIComponent(dir))
@@ -133,7 +199,7 @@
           parts.push(`<a href="#" class="${cls}" data-path="${escapeAttr(entry.path)}">${icon} ${escapeText(entry.name)}</a>`)
         }
         if (!data.entries.length) parts.push('<div class="empty">（空目录，或用上面的输入框打开任意路径）</div>')
-        aside.innerHTML = parts.join('')
+        aside.innerHTML = parts.join('') + foot
         aside.querySelectorAll('a').forEach((anchor) => {
           anchor.addEventListener('click', (event) => {
             event.preventDefault()
@@ -144,8 +210,12 @@
         })
         const up = $('go-up')
         if (up) up.addEventListener('click', () => data.parent && listDir(data.parent))
+        const mobileBack = $('panel-mobile')
+        if (mobileBack) mobileBack.addEventListener('click', () => { location.href = '/' })
       } catch (error) {
-        aside.innerHTML = '<div class="empty">无法列出目录：' + escapeText(error.message) + '</div>'
+        aside.innerHTML = '<div class="empty">无法列出目录：' + escapeText(error.message) + '</div>' + foot
+        const mobileBack = $('panel-mobile')
+        if (mobileBack) mobileBack.addEventListener('click', () => { location.href = '/' })
       }
     }
 
@@ -159,7 +229,6 @@
         localStorage.setItem('dshgw-md-dir', currentDir)
         const meta = `${data.path} · ${formatBytes(data.bytes)} · ${new Date(data.mtime).toLocaleString()}`
         content.innerHTML = `<div class="meta">${escapeText(meta)}</div>` + (data.html || '<p>（空文件）</p>')
-        // open relative links inside the viewer
         content.querySelectorAll('a[href]').forEach((anchor) => {
           const href = anchor.getAttribute('href')
           if (!href || /^(https?:|mailto:|#)/i.test(href)) return
@@ -170,11 +239,11 @@
           })
         })
         window.scrollTo(0, 0)
-        content.scrollIntoView({ block: 'start' })
-        // keep the directory sidebar in sync with the opened file
+        if (isNarrow()) setDrawer(false)
         listDir(currentDir)
       } catch (error) {
         content.innerHTML = '<div class="error">' + escapeText(error.message) + '</div>'
+        if (isNarrow()) setDrawer(false)
       }
     }
 
@@ -191,20 +260,25 @@
 
     function escapeAttr (value) { return escapeText(value) }
 
+    $('menu').addEventListener('click', () => setDrawer(!document.body.classList.contains('nav-open')))
+    $('backdrop').addEventListener('click', () => setDrawer(false))
+
     $('open').addEventListener('click', () => {
       const value = $('path').value.trim()
       if (!value) return
       if (/\.(md|markdown|txt)$/i.test(value)) openFile(value)
       else listDir(value)
     })
-    $('path').addEventListener('keydown', (event) => { if (event.key === 'Enter') $('open').click() })
+    $('path').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); $('open').click() }
+    })
     $('back').addEventListener('click', () => {
       const parent = dirOf($('path').value.trim())
       if (parent) listDir(parent)
     })
-    $('panel').addEventListener('click', () => { location.href = '/__ui/' })
+    $('panel').addEventListener('click', () => { location.href = '/' })
 
-    const initial = $('path').value || currentDir
+    const initial = currentDir
     const fromQuery = new URLSearchParams(location.search).get('path')
     if (fromQuery) {
       if (/\.(md|markdown|txt)$/i.test(fromQuery)) openFile(fromQuery)

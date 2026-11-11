@@ -164,6 +164,9 @@ const evaluated = await send('Runtime.evaluate', {
     compat: window.__DSHGW_COMPAT__ || null,
     emulated: window.__EMULATED__ || null,
     text: (document.body && document.body.innerText || '').slice(0, 2000),
+    vw: window.innerWidth,
+    sw: document.documentElement.scrollWidth,
+    openButton: (() => { const b = document.getElementById('open'); if (!b) return null; const r = b.getBoundingClientRect(); return Math.round(r.left) + ',' + Math.round(r.right); })(),
     rootChildren: (document.getElementById('root') || document.body).children.length,
     htmlLength: document.documentElement.outerHTML.length
   })`,
